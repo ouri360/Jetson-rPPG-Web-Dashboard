@@ -55,9 +55,9 @@ The software bypasses heavy deep learning models to prioritize deterministic, re
                                                        │
                                           [Inverse-Variance Fusion]
                                                        │
-                             [OLA Density Array] ──► [Detrending] ──► [Adaptive Bandpass] ──► [FFT Core]
-                                                                                                    │
-                                                                              [BPM Estimate + ECG-like Waveform]
+                                            [OLA Density Array] ──► [Detrending] ──► [Adaptive Bandpass] ──► [FFT Core]
+                                                                                                                │
+                                                                                        [BPM Estimate + ECG-like Waveform]
 ```
 
 ### Pipeline Steps
@@ -68,7 +68,7 @@ The software bypasses heavy deep learning models to prioritize deterministic, re
 
 3. **Signal Processing Core (`processor.py`)**
    - Normalizes temporal sub-window overlaps via a strict **Overlap-Add (OLA)** correction array.
-   - Computes localized alphas ($\alpha = \sigma(S_1)/\sigma(S_2)$) independently per sub-region.
+   - Computes localized Alphas $\left(\alpha = \frac{\sigma(S_1)}{\sigma(S_2)}\right)$ independently per sub-region.
    - Filters the synchronized stream with an adaptive dual-bandpass filter (Butterworth 3rd order, centered ±0.35 Hz around the tracked heart rate window).
    - Extracts spectral densities via **Fast Fourier Transform (FFT)**.
 
