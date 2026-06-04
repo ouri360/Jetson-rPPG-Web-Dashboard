@@ -80,7 +80,7 @@ The software bypasses heavy deep learning models to prioritize deterministic, re
 
 | Component | Specification |
 |---|---|
-| Platform | NVIDIA Jetson Orin Nano (4 GB or 8 GB Developer Kit) |
+| Platform | NVIDIA Jetson Orin Nano (8 GB Developer Kit) |
 | Operating System | Ubuntu 22.04 LTS + JetPack 6.2.2 |
 | Camera | UVC/V4L2 USB Webcam — optimized for 640×480 @ 30 FPS |
 
@@ -156,11 +156,11 @@ python3 main.py
 
 ### True Regional Alpha Isolation
 
-Unlike naive implementations that apply a single global alpha across the entire face, this architecture applies the plane rotation:
+Unlike naive implementations that apply a single global alpha across the entire face, this architecture applies the plane rotation *locally* within each sub-region: 
 
 $$\mathbf{h} = S_1 + \alpha \cdot S_2$$
 
-*locally* within each sub-region. A localized artifact (e.g., a shadow on one cheek) therefore cannot corrupt the clean physiological signal captured on the forehead.
+A localized artifact (e.g., a shadow on one cheek) therefore cannot corrupt the clean physiological signal captured on the forehead.
 
 ### Overlap-Add (OLA) Normalization
 
