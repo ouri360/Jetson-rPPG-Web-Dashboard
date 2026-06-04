@@ -1,6 +1,3 @@
-Voici le fichier `README.md` complet, regroupé en **un seul bloc de code unique** sans aucune interruption de texte. Tu peux le copier et le coller directement dans ton fichier sur GitHub :
-
-```markdown
 # High-Performance rPPG Web Dashboard on NVIDIA Jetson Orin Nano
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
@@ -128,7 +125,3 @@ For technical recruiters and R&D evaluators, here is why this implementation ach
 ## 📄 License
 
 This project is open-source and available under the [MIT License](https://www.google.com/search?q=LICENSE).
-
-```
-
-```
