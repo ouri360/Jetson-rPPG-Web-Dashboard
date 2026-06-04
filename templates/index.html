@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard rPPG - Jetson Orin</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #121212; 
+            color: white; 
+            display: flex; 
+            padding: 20px; 
+            margin: 0;
+            height: 100vh; /* Utiliser toute la hauteur de l'écran */
+            box-sizing: border-box;
+        }
+        
+        .video-container { 
+            flex: 1; 
+            margin-right: 20px; 
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* --- NOUVEAU : Configuration de la zone défilante --- */
+        .dashboard-container { 
+            width: 450px; 
+            background: #1e1e1e; 
+            border-radius: 10px; 
+            display: flex;
+            flex-direction: column;
+            height: 100%; /* Prend toute la hauteur disponible */
+        }
+        
+        .dashboard-header {
+            padding: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .dashboard-scroll {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto; /* Active le défilement vertical uniquement ici */
+        }
+        /* ---------------------------------------------------- */
+
+        img { width: 100%; border-radius: 8px; border: 2px solid #333; }
+        .stat-box { background: #2d2d2d; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
+        h1 { font-size: 48px; color: #ff4757; margin: 10px 0; }
+        button { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 8px; border: none; }
+        .btn-start { background-color: #2ed573; color: white; }
+        .btn-stop { background-color: #ff4757; color: white; }
+        canvas { background: #000; border-radius: 5px; margin-top: 10px; width: 100% !important; }
+        #ecgChart {
+            background-color: #040a06; /* Fond noir/vert très sombre */
+            background-image: 
+                /* 1. Les grands carreaux (plus brillants, tous les 50px) */
+                linear-gradient(rgba(46, 213, 115, 0.25) 1.5px, transparent 1.5px),
+                linear-gradient(90deg, rgba(46, 213, 115, 0.25) 1.5px, transparent 1.5px),
+                /* 2. Les petits carreaux (subtils, tous les 10px) */
+                linear-gradient(rgba(46, 213, 115, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(46, 213, 115, 0.08) 1px, transparent 1px);
+            background-size: 50px 50px, 50px 50px, 10px 10px, 10px 10px;
+            border: 1px solid rgba(46, 213, 115, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="video-container">
+        <h2>Flux Caméra & ROI</h2>
+        <img src="{{ url_for('video_feed') }}" alt="Webcam Feed">
+    </div>
+
+    <div class="dashboard-container">
+        
+        <div class="dashboard-header">
+            <button id="toggleBtn" class="btn-start" onclick="toggleMath()">START rPPG</button>
+            <div class="stat-box" style="margin-top: 15px; margin-bottom: 0;">
+                <h3 style="margin: 0;">BPM Estimé</h3>
+                <h1 id="bpmDisplay">--</h1>
+            </div>
+        </div>
+
+        <div class="dashboard-scroll">
+            <div class="stat-box">
+                <h3 style="margin-top: 0;">Onde ECG (POS)</h3>
+                <canvas id="ecgChart" height="120"></canvas>
+            </div>
+
+            <div class="stat-box">
+                <h3 style="margin-top: 0;">Spectre de Fréquences (FFT)</h3>
+                <canvas id="fftChart" height="150"></canvas>
+            </div>
+
+            <div class="stat-box">
+                <h3 style="margin-top: 0;">Poids des Zones & SNR</h3>
+                <p id="weightsDisplay" style="font-family: monospace; font-size: 14px; text-align: left; margin-left: 20px;">En attente...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let isRunning = false;
+        
+        // --- 1. Initialisation de l'ECG ---
+        const ctxEcg = document.getElementById('ecgChart').getContext('2d');
+        const ecgChart = new Chart(ctxEcg, {
+            type: 'line',
+            data: { labels: Array(75).fill(''), datasets: [{ label: 'rPPG', data: [], borderColor: '#2ed573', borderWidth: 2, pointRadius: 0, tension: 0.4 }] },
+            options: { animation: false, scales: { y: { min: 0, max: 1, display: false }, x: { display: false } }, plugins: { legend: { display: false } } }
+        });
+
+        // --- 2. Initialisation de la FFT ---
+        const ctxFft = document.getElementById('fftChart').getContext('2d');
+        const fftChart = new Chart(ctxFft, {
+            type: 'bar',
+            data: { 
+                labels: [], 
+                datasets: [{ 
+                    label: 'Puissance', 
+                    data: [], 
+                    // --- NOUVEAU DESIGN FFT ---
+                    backgroundColor: 'rgba(255, 71, 87, 0.9)', // Rouge semi-transparent
+                    borderColor: 'rgba(255, 71, 87, 1)',       // Bordure rouge vif
+                    borderWidth: 1,                            // Épaisseur de la bordure
+                    borderRadius: 3,                           // Arrondi en haut des barres
+                    barPercentage: 1,                          // Laisse un léger espace entre les barres
+                    categoryPercentage: 0.9
+                    // --------------------------
+                }] 
+            },
+            options: { 
+                animation: false, 
+                scales: { 
+                    y: { min: 0, max: 1, display: false },
+                    x: { 
+                        display: true,
+                        ticks: { 
+                            color: '#aaa', 
+                            maxTicksLimit: 10,
+                            font: { size: 11 }, // Taille de police optimisée
+                            maxRotation: 0,     // NOUVEAU : Interdit l'inclinaison
+                            minRotation: 0      // NOUVEAU : Force le texte droit
+                        },
+                        grid: { color: '#333' }
+                    } 
+                }, 
+                plugins: { legend: { display: false } } 
+            }
+        });
+
+        function toggleMath() {
+            fetch('/toggle_math', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                isRunning = (data.status === "running");
+                const btn = document.getElementById("toggleBtn");
+                btn.innerText = isRunning ? "STOP rPPG" : "START rPPG";
+                btn.className = isRunning ? "btn-stop" : "btn-start";
+                
+                if (!isRunning) {
+                    // Reset du BPM et de l'ECG
+                    document.getElementById("bpmDisplay").innerText = "--";
+                    ecgChart.data.datasets[0].data = [];
+                    ecgChart.update();
+                    
+                    // Reset complet de la FFT ---
+                    fftChart.data.labels = [];
+                    fftChart.data.datasets[0].data = [];
+                    fftChart.update();
+                    // -----------------------------------------
+                }
+            });
+        }
+
+        setInterval(() => {
+            if (isRunning) {
+                fetch('/get_telemetry')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "stopped") return;
+                    
+                    document.getElementById("bpmDisplay").innerText = data.bpm;
+                    
+                    if (data.ecg_wave.length > 0) {
+                        ecgChart.data.datasets[0].data = data.ecg_wave;
+                        ecgChart.update();
+                    }
+                    
+                    // --- Mise à jour du graphique FFT ---
+                    if (data.fft_labels && data.fft_labels.length > 0 && data.fft_mag.length > 0) {
+                        fftChart.data.labels = data.fft_labels;
+                        fftChart.data.datasets[0].data = data.fft_mag;
+                        fftChart.update();
+                    }
+                    // ------------------------------------
+                    
+                    let weightsHtml = "";
+                    for (const [key, value] of Object.entries(data.weights)) {
+                        weightsHtml += `${key}: ${(value * 100).toFixed(1)}%<br>`;
+                    }
+                    weightsHtml += `<br><strong style="color: #00d2d3;">Global SNR: ${data.snr}</strong>`;
+                    document.getElementById("weightsDisplay").innerHTML = weightsHtml;
+                });
+            }
+        }, 100); 
+    </script>
+</body>
+</html>

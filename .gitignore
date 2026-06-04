@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.venv_old_project/
+env/
+
+# Data & Modèles
+*.h5
+*.tflite
+*.onnx
+*.pkl
+dataset/
+output/
+rppg_test/
+pos_net.onnx.data
+pos_net.onnx
+trt_cache/
+
+
+
+
+# VS Code & OS
+.vscode/
+.DS_Store
