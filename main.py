@@ -14,7 +14,7 @@ import threading
 from webcam import WebcamStream
 from detector import FaceDetector
 from processor import SignalProcessor
-from test_py.gt import GroundTruthReader
+from groundtruth_benchmarks.gt import GroundTruthReader
 
 
 def main():
