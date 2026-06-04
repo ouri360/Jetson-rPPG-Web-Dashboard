@@ -13,7 +13,7 @@ import logging
 from webcam import WebcamStream
 from detector import FaceDetector
 from processor import SignalProcessor
-from gt import GroundTruthReader
+from test_py.gt import GroundTruthReader
 
 # Suppress debug logs from the other modules to keep the terminal clean
 logging.getLogger().setLevel(logging.WARNING)
