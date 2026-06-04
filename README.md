@@ -174,4 +174,4 @@ Temporal windows overlap by over 91% (`step = 4` frames on a 1.6 s buffer). A cu
 
 ## 📄 License
 
-This project is open-source and available under the [MIT License](LICENSE).
+This project is open-source and available under the [MIT License](LICENCE).
